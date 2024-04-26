@@ -1,6 +1,6 @@
 import chalk from "chalk";
 import { listProblemSet } from "../http/api.js";
-import { getContestIDFromPath } from "../core/utils.js";
+import {getContestIDFromPath, getDomain} from "../core/utils.js";
 import Table from 'cli-table3';
 
 const printProblemSet = (data) => {

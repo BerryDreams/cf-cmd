@@ -1,5 +1,5 @@
 import Configstore from "configstore";
-import tough from 'tough-cookie';
+import tough, {Cookie} from 'tough-cookie';
 import axios from "axios";
 import { wrapper } from 'axios-cookiejar-support';
 import {getDomain} from "./utils.js";
@@ -16,21 +16,17 @@ export const Instance = {
 export const initGlobal = () => {
     // 初始化全局配置
     Instance.config = new Configstore('cf-cmd', {
-        domain: 'https://codeforces.com/',
+        domain: default_value.domain,
         logged: false,
-        jar: {
-            storeType: 'MemoryCookieStore',
-            rejectPublicSuffixes: true,
-            cookies: []
-        }
+        cookies: []
     }, {});
     // 初始化cookiejar
-    const jarJson = Instance.config.get('jar');
-    if (jarJson === null) {
-        Instance.jar = new tough.CookieJar();
-    } else {
-        Instance.jar = tough.CookieJar.deserializeSync(jarJson);
-    }
+    Instance.jar = new tough.CookieJar();
+    const cookies = Instance.config.get("cookies");
+    cookies.forEach(obj => {
+        const cookie = new Cookie(obj);
+        Instance.jar.setCookieSync(cookie, getDomain());
+    });
     // 初始化axios
     Instance.client = wrapper(axios.create({
         baseURL: Instance.config.get('domain'),
@@ -39,12 +35,10 @@ export const initGlobal = () => {
     }));
 };
 
-export const destroyGlobal = () => {
-    // 保存cookieJar
-    const domain = getDomain();
-    if (domain == null) {
-        return;
-    }
-    const jarJson = Instance.jar.serializeSync();
-    Instance.config.set('jar', jarJson);
+/**
+ * 项目相关常量
+ */
+export const version = 'v0.1.0';
+export const default_value = {
+    domain: 'https://codeforces.com/',
 };

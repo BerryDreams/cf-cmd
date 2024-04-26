@@ -1,10 +1,33 @@
 import inquirer from 'inquirer';
 import { login } from '../http/api.js';
 import chalk from "chalk";
-import {getHandle, getLogged, setHandleOrEmail, setLogged, setPassword} from "../core/utils.js";
+import {
+    delProxy,
+    getDomain,
+    getHandle,
+    getLogged,
+    getProxy, getRootPath, setDomain,
+    setHandle,
+    setHandleOrEmail,
+    setLogged,
+    setPassword, setProxy, setRootPath
+} from "../core/utils.js";
+import {default_value, Instance} from "../core/global.js";
+
+const saveCookies = () => {
+    // 保存cookieJar
+    const domain = getDomain();
+    if (domain == null) {
+        return;
+    }
+    const cookies = Instance.jar.getCookiesSync(domain);
+    if (cookies) {
+        Instance.config.set('cookies', cookies);
+    }
+};
 
 const login_action = async () => {
-    console.log(chalk.blue('Configure email and password'));
+    console.log(chalk.blue('Login with email and password'));
     const A = await inquirer.prompt(
         [
             {
@@ -24,10 +47,18 @@ const login_action = async () => {
             }
         ]
     );
+
+    const handle = await login(A.handleOrEmail, A.password);
+    if (handle === null) {
+        console.log(chalk.red('Login failed.'));
+        return;
+    }
+    setHandle(handle);
     setHandleOrEmail(A.handleOrEmail);
     setPassword(A.password);
     setLogged(true);
-    return await login();
+    saveCookies();
+    console.log(chalk.green('Login success, current user: ' + handle));
 };
 
 const status_action = () => {
@@ -37,15 +68,63 @@ const status_action = () => {
         console.log(chalk.red('Not logged in'));
         return;
     }
-    console.log(chalk.green('Current user: ' + handle));
+    console.log(chalk.blue('Current user: ' + handle));
 };
 
-const proxy_action = () => {
-
+const proxy_action = async () => {
+    const proxy = getProxy();
+    if (proxy === "") {
+        console.log(chalk.blue('Configure proxy'));
+    } else {
+        console.log(chalk.blue('Configure proxy, current proxy is: ' + proxy));
+    }
+    const A = await inquirer.prompt(
+        [
+            {
+                type: 'input',
+                name: 'proxy',
+                message: 'New Proxy',
+                default: '',
+                askAnswered: true,
+            }
+        ]
+    );
+    A.proxy ? setProxy(A.proxy) : delProxy();
+    console.log(chalk.green('Configure proxy success'));
 };
 
-const domain_action = () => {
+const domain_action = async () => {
+    console.log(chalk.blue('Configure domain, current domain is: ' + getDomain()));
+    const A = await inquirer.prompt(
+        [
+            {
+                type: 'input',
+                name: 'domain',
+                message: 'New Domain',
+                default: default_value.domain,
+                askAnswered: true,
+            }
+        ]
+    );
+    setDomain(A.domain);
+    console.log(chalk.green('Configure domain success'));
+};
 
+const root_action = async () => {
+    console.log(chalk.blue('Configure code root path, current path is: ' + getRootPath()));
+    const A = await inquirer.prompt(
+        [
+            {
+                type: 'input',
+                name: 'root',
+                message: 'New Root Path',
+                default: '~/cf',
+                askAnswered: true,
+            }
+        ]
+    );
+    setRootPath(A.root);
+    console.log(chalk.green('Configure root path success'));
 };
 
 
@@ -57,10 +136,11 @@ const config_action = () => {
         default: 0,
         askAnswered: true,
         choices: [
-            { name: '0) Login', value: 0},
-            { name: '1) User status', value: 1},
-            { name: '2) Set proxy', value: 2},
-            { name: '3) Set domain', value: 3},
+            { name: '0) login', value: 0},
+            { name: '1) view user status', value: 1},
+            { name: '1) set root path', value: 2},
+            { name: '2) set proxy', value: 3},
+            { name: '3) set domain', value: 4},
         ]
     }, {}).then((A) => {
         switch (A.configOption) {
@@ -71,14 +151,17 @@ const config_action = () => {
                 status_action();
                 break;
             case 2:
-                proxy_action();
+                root_action().then();
                 break;
             case 3:
-                domain_action();
+                proxy_action().then();
+                break;
+            case 4:
+                domain_action().then();
                 break;
         }
     }).catch((error) => {
-        console.error('', error);
+        console.log(chalk.red(error.message));
     });
 }
 

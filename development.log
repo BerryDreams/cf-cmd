@@ -1,0 +1,4 @@
+v0.1.0 remaining problems
+1. genFtaa genBfaa genTta
+2. 第一次启动时配置可能undefined
+3. list无数据要返回错误
